@@ -1,0 +1,11 @@
+services:
+  brunight:
+    build: .
+    container_name: brunight-container
+    working_dir: /app
+    volumes:
+      - ./output:/app/output
+      - ./models:/app/models
+      - ./songs:/app/songs
+    stdin_open: true
+    tty: true

@@ -7,5 +7,17 @@ services:
       - ./output:/app/output
       - ./models:/app/models
       - ./songs:/app/songs
-    stdin_open: true
-    tty: true
+    # Expose the AMD GPU (ROCm). group ids: video=44, render=110 on the host.
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    group_add:
+      - "44"
+      - "110"
+    security_opt:
+      - seccomp=unconfined
+    # RX 6600 (gfx1032) is not an officially supported ROCm target; report it as gfx1030 (supported).
+    environment:
+      - HSA_OVERRIDE_GFX_VERSION=10.3.0
+    command: ["tail", "-f", "/dev/null"]
+    restart: unless-stopped

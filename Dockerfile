@@ -1,32 +1,25 @@
-# Use official Python 3.12 image
-FROM python:3.12-slim
+# ROCm base: provides torch built for AMD GPUs (HIP) and the ROCm runtime.
+FROM rocm/pytorch:latest
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    python3-dev \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
+    python3.12-venv \
     && rm -rf /var/lib/apt/lists/*
 
-# Set working directory
 WORKDIR /app
 
-# Copy the hybrid.sh script
 COPY hybrid.sh .
 
-# Create and activate virtual environment
-RUN python3 -m venv .venv
+# Inherit the ROCm torch from the base image so pip does not replace it with a CPU/CUDA wheel.
+RUN python3 -m venv --system-site-packages .venv \
+    && .venv/bin/pip install -U pip setuptools wheel
 
-# Upgrade pip, setuptools, wheel
-RUN .venv/bin/pip install -U pip setuptools wheel
+# audio-separator pulls in CPU onnxruntime; replace it with the ROCm build.
+RUN .venv/bin/pip install audio-separator audioread \
+    && .venv/bin/pip uninstall -y onnxruntime \
+    && .venv/bin/pip install "onnxruntime-rocm==1.22.2.post3"
 
-# Install audio-separator with GPU support and audioread
-RUN .venv/bin/pip install "audio-separator[gpu]" audioread
+RUN chmod +x hybrid.sh \
+    && mkdir -p output models
 
-# Make the script executable
-RUN chmod +x hybrid.sh
-
-# Create output directory
-RUN mkdir -p output models
-
-# Default to bash
 CMD ["/bin/bash"]
